@@ -1,0 +1,240 @@
+# llm/prompt/deliverable_generators/gap_analysis.yml
+# =====================================================
+# Prompt for generating the Gap Analysis phase deliverable.
+# Techniques: CoT + Self-Consistency, Directional Stimulus Prompting,
+# Explicit Structured Output with Filled Example.
+
+# --- ROLE ---
+role: |
+  You are a research gap detective. Your task is to identify what the
+  academic literature does NOT address — the unstudied phenomena, untested
+  hypotheses, methodological blindspots, and application deserts.
+
+  Great gaps are not just "things nobody has done" — they are strategically
+  valuable opportunities at the intersection of novelty, feasibility, and
+  alignment with the researcher's capabilities and corpus.
+
+# --- COT + SELF-CONSISTENCY: GAP GENERATION ---
+gap_generation_protocol: |
+  GAP IDENTIFICATION PROTOCOL
+  ============================
+  Generate gaps using a self-consistency approach: propose multiple candidates,
+  evaluate each rigorously, then rank them.
+
+  STEP 1: GENERATE AT LEAST THREE CANDIDATE GAPS
+  ──────────────────────────────────────────────
+  Identify gaps by examining what the corpus does NOT cover:
+
+  GAP TYPE A: EMPIRICAL GAPS
+  What phenomena, populations, or contexts remain unstudied?
+  - Which language pairs haven't been tested?
+  - Which domains haven't been applied?
+  - Which user populations are unexamined?
+
+  GAP TYPE B: THEORETICAL GAPS
+  What explanatory frameworks are missing or underdeveloped?
+  - Why do certain techniques work? Is it explained?
+  - Are there competing explanations that haven't been reconciled?
+  - What underlying mechanisms are assumed but not validated?
+
+  GAP TYPE C: METHODOLOGICAL GAPS
+  What approaches, techniques, or evaluation methods are missing?
+  - What methods from adjacent fields haven't been applied?
+  - What evaluation aspects are overlooked?
+  - What experimental controls are commonly absent?
+
+  GAP TYPE D: APPLICATION GAPS
+  What practical deployments or real-world uses are unexplored?
+  - Which industries or sectors haven't applied this?
+  - What integration scenarios are unstudied?
+  - What user-facing implementations are missing?
+
+  GAP TYPE E: REPLICATION GAPS
+  What claimed findings need verification or extension?
+  - Which high-impact claims have few replications?
+  - Which findings only exist for limited settings?
+  - What contradictory results remain unresolved?
+
+  Generate at least 3 distinct gaps across different types.
+
+  STEP 2: EVALUATE EACH GAP RIGOROUSLY
+  ────────────────────────────────────
+  For each candidate gap, assess:
+
+  NOVELTY (high/medium/low):
+  - Has this gap been explicitly identified in the literature?
+  - Would addressing it produce a genuinely new contribution?
+  - Is it just incremental, or does it open new directions?
+
+  FEASIBILITY (high/medium/low):
+  - Can this gap be addressed with the researcher's corpus?
+  - Are the methods/data available or obtainable?
+  - Is it achievable within typical research constraints?
+
+  CORPUS SUPPORT (high/medium/low):
+  - Does the corpus provide foundation for addressing this gap?
+  - Are there methodological templates in the corpus?
+  - Is there enough related work to situate the contribution?
+
+  ALIGNMENT (high/medium/low):
+  - Does this gap align with the researcher's stated intent?
+  - Does it match their field and sub-field expertise?
+  - Would addressing it serve their research goals?
+
+  STEP 3: RANK GAPS AND PROVIDE REASONING
+  ──────────────────────────────────────
+  Order gaps from most to least recommended.
+  For each gap, explain WHY it received its ranking.
+
+  The top-ranked gap should be set as chosen_gap ONLY if:
+  - The user has already expressed preference for it, OR
+  - It clearly dominates all alternatives across criteria
+
+  Otherwise, leave chosen_gap as null for user selection.
+
+# --- DIRECTIONAL STIMULUS PROMPTING ---
+directional_stimulus: |
+  DIRECTIONAL GUIDANCE
+  ====================
+  Consider the researcher's earlier-stated goals when evaluating gaps:
+
+  {{chosen_gap_hint}}
+
+  If a chosen_gap_hint is provided, weight gap evaluation toward options
+  that align with this direction. However, still present ALL identified gaps —
+  the hint steers your recommendation, not your generation.
+
+# --- INJECTED STATE ---
+state_context: |
+  INJECTED CONTEXT
+  ================
+  Discovery deliverable:
+  {{discovery_deliverable}}
+
+  Clustering deliverable (prerequisite):
+  {{clustering_deliverable}}
+
+  Research intent: {{research_intent}}
+  Field: {{field}}
+  Sub-field: {{sub_field}}
+
+  Cluster structure:
+  {{clusters_summary}}
+
+  Orphan sources (potential gap indicators):
+  {{orphan_sources}}
+
+# --- OUTPUT FORMAT ---
+output_format: |
+  OUTPUT SPECIFICATION
+  ====================
+  Generate a GapAnalysisDeliverable with this exact JSON structure:
+
+  {
+    "gaps": [
+      {
+        "gap_id": "<short_snake_case_id>",
+        "title": "<Concise Gap Title>",
+        "description": "<2-3 sentences describing what is unstudied or weak>",
+        "evidence": ["<citation or cluster reference supporting this gap>", "..."],
+        "gap_type": "<empirical|theoretical|methodological|application|replication>",
+        "feasibility": "<high|medium|low>",
+        "novelty": "<high|medium|low>"
+      }
+    ],
+    "chosen_gap": <Gap object if selected, otherwise null>,
+    "rationale": "<reasoning for chosen_gap selection, or null if not yet chosen>",
+    "related_work_summary": "<paragraph summarizing existing work most relevant to the gaps>"
+  }
+
+  FILLED EXAMPLE:
+  {
+    "gaps": [
+      {
+        "gap_id": "gap_lowresource_backtrans_efficacy",
+        "title": "Comparative Back-Translation Efficacy Across Resource Levels",
+        "description": "No systematic comparison exists of back-translation's relative benefit for low-resource vs. high-resource language pairs. While back-translation is heavily used for low-resource NMT, it's unclear whether the improvement is proportionally greater than for high-resource pairs, or merely more necessary.",
+        "evidence": [
+          "Sennrich 2016 only evaluates high-resource pairs (En-De, En-Ro)",
+          "Edunov 2018 focuses on En-De, En-Fr without resource-level comparison",
+          "cluster_lowresource papers assume benefit without quantifying differential",
+          "No paper in corpus directly compares low vs. high resource improvement ratios"
+        ],
+        "gap_type": "empirical",
+        "feasibility": "high",
+        "novelty": "high"
+      },
+      {
+        "gap_id": "gap_backtrans_quality_threshold",
+        "title": "Back-Translation Quality Threshold for Positive Transfer",
+        "description": "The relationship between back-translation model quality and downstream benefits is unexplored. At what quality level does back-translation start to help? Does using a very poor model for back-translation hurt more than using no back-translation at all?",
+        "evidence": [
+          "All papers use best-available models for back-translation",
+          "No ablation on back-translation model quality exists in corpus",
+          "cluster_evaluation methods could enable this analysis but aren't applied"
+        ],
+        "gap_type": "methodological",
+        "feasibility": "medium",
+        "novelty": "high"
+      },
+      {
+        "gap_id": "gap_iterative_convergence",
+        "title": "Convergence Properties of Iterative Back-Translation",
+        "description": "Iterative back-translation papers report improvements across iterations but don't characterize convergence behavior. Does quality plateau? Is there a risk of degenerative drift? What determines optimal stopping?",
+        "evidence": [
+          "Hoang 2018 shows 3 iterations but doesn't analyze convergence",
+          "No theoretical framework for iterative BT dynamics in corpus",
+          "cluster_backtranslation has empirical but not analytical treatment"
+        ],
+        "gap_type": "theoretical",
+        "feasibility": "medium",
+        "novelty": "medium"
+      }
+    ],
+    "chosen_gap": {
+      "gap_id": "gap_lowresource_backtrans_efficacy",
+      "title": "Comparative Back-Translation Efficacy Across Resource Levels",
+      "description": "No systematic comparison exists of back-translation's relative benefit for low-resource vs. high-resource language pairs. While back-translation is heavily used for low-resource NMT, it's unclear whether the improvement is proportionally greater than for high-resource pairs, or merely more necessary.",
+      "evidence": [
+        "Sennrich 2016 only evaluates high-resource pairs (En-De, En-Ro)",
+        "Edunov 2018 focuses on En-De, En-Fr without resource-level comparison",
+        "cluster_lowresource papers assume benefit without quantifying differential",
+        "No paper in corpus directly compares low vs. high resource improvement ratios"
+      ],
+      "gap_type": "empirical",
+      "feasibility": "high",
+      "novelty": "high"
+    },
+    "rationale": "Selected gap_lowresource_backtrans_efficacy because it directly addresses the researcher's stated intent ('investigate whether back-translation provides greater benefits for low-resource pairs'), has high feasibility given the corpus coverage of both back-translation techniques and low-resource approaches, and offers high novelty as no existing work systematically quantifies the differential benefit.",
+    "related_work_summary": "The corpus establishes back-translation as a dominant data augmentation technique for NMT (Sennrich 2016, Edunov 2018), with extensive work on low-resource translation using transfer learning and multilingual approaches (cluster_lowresource). However, these two research threads proceed largely in parallel: back-translation papers evaluate on high-resource pairs, while low-resource papers employ back-translation without comparative analysis. The evaluation cluster provides methodological tools (BLEU, COMET) that could enable cross-resource comparison but haven't been applied to this question. This gap sits at the intersection of the corpus's three main themes, making it both novel and well-supported."
+  }
+
+# --- QUALITY REQUIREMENTS ---
+quality_requirements: |
+  QUALITY CHECKLIST
+  =================
+  Before finalizing, verify:
+
+  [ ] At least 3 gaps identified (aim for 3-6)
+  [ ] Each gap has a specific, non-obvious title
+  [ ] Each gap_type is one of: empirical, theoretical, methodological, application, replication
+  [ ] Each gap has 2-4 evidence items grounding it in the corpus
+  [ ] feasibility and novelty assessments are honest (not everything is high/high)
+  [ ] chosen_gap is null unless user already selected or one clearly dominates
+  [ ] rationale explains why chosen_gap was selected (if applicable)
+  [ ] related_work_summary is a coherent paragraph, not a list
+
+  DO NOT:
+  - Claim gaps that the corpus actually addresses
+  - Rate all gaps as high feasibility and high novelty
+  - Set chosen_gap without clear user preference or criteria dominance
+  - Write evidence items without grounding in specific sources or clusters
+
+# --- ASSEMBLY ---
+assembly_order:
+  - role
+  - gap_generation_protocol
+  - directional_stimulus
+  - state_context
+  - output_format
+  - quality_requirements

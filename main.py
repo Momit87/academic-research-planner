@@ -16,8 +16,9 @@ Run locally:
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from core.config import get_settings
 from core.logging import get_logger, setup_logging
@@ -43,27 +44,23 @@ os.environ["LANGCHAIN_PROJECT"] = settings.langchain_project
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Manages application startup and shutdown.
-    Code before yield runs on startup.
-    Code after yield runs on shutdown.
-    """
-    # --- Startup ---
-    logger.info(
-        "Application starting",
-        extra={
-            "env": settings.app_env,
-            "langsmith_tracing": settings.langchain_tracing_v2,
-            "langsmith_project": settings.langchain_project,
-            "python_version": "3.12",
-        },
-    )
-    # Postgres checkpointer setup added in Milestone 9
-    # LLM factory warm-up added in Milestone 8
+    from langgraph.checkpoint.postgres.aio import AsyncShallowPostgresSaver
+    from core.llm_factory import get_main_agent_llm, get_summarize_llm, get_deliverable_generator_llm
 
-    yield  # Application runs here
+    # Convert SQLAlchemy-style URL to psycopg-compatible URL
+    # langgraph-checkpoint-postgres v3+ uses psycopg which needs postgresql:// not postgresql+asyncpg://
+    postgres_url = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
 
-    # --- Shutdown ---
+    async with AsyncShallowPostgresSaver.from_conn_string(
+        postgres_url
+    ) as checkpointer:
+        await checkpointer.setup()
+        app.state.checkpointer = checkpointer
+        get_main_agent_llm()
+        get_summarize_llm()
+        get_deliverable_generator_llm()
+        logger.info("Application started")
+        yield
     logger.info("Application shutting down")
 
 
@@ -101,10 +98,29 @@ def create_app() -> FastAPI:
     )
 
     # ------------------------------------------------------------------
-    # Routers (uncomment as milestones complete)
+    # Global error handler — structured JSON errors for all 500s
     # ------------------------------------------------------------------
-    # from api.routers.research_planner import router as planner_router
-    # app.include_router(planner_router, prefix="/research-planner")
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        logger.error(
+            "Unhandled exception",
+            extra={"path": str(request.url), "error": str(exc)},
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Internal server error",
+                "type": type(exc).__name__,
+                "details": str(exc),
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Routers
+    # ------------------------------------------------------------------
+    from api.routers.research_planner import router as planner_router
+    app.include_router(planner_router, prefix="/research-planner")
 
     # ------------------------------------------------------------------
     # Health check

@@ -7,8 +7,13 @@ This is the ONLY file where model names, providers, and temperature are set.
 Every agent and tool imports from here — never instantiate LLMs elsewhere.
 
 Swapping a model:
-    1. Edit the model name in .env
+    1. Edit the model name in .env (change both model string and swap primary/fallback)
     2. That's it. No logic files change.
+
+Provider detection:
+    Models are auto-detected by name prefix:
+    - "gemini*" or "models/*" → ChatGoogleGenerativeAI
+    - everything else → ChatGroq
 
 Fallback behavior:
     If the primary provider fails (rate limit, outage, timeout),
@@ -20,15 +25,16 @@ Usage:
 
     llm = get_main_agent_llm()
     response = await llm.ainvoke(messages)
+
+    # For tool-calling (main_agent):
+    from core.llm_factory import build_main_agent_chain_with_tools
+    llm_with_tools = build_main_agent_chain_with_tools(tools)
 """
 
 from functools import lru_cache
-
-from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
 
 from core.config import get_settings
 from core.logging import get_logger
@@ -39,28 +45,6 @@ logger = get_logger(__name__)
 # ------------------------------------------------------------------
 # Internal builder helpers
 # ------------------------------------------------------------------
-
-def _openai(model: str, **kwargs) -> ChatOpenAI:
-    """Build a ChatOpenAI instance with standard settings."""
-    settings = get_settings()
-    return ChatOpenAI(
-        model=model,
-        temperature=0,
-        api_key=settings.openai_api_key,
-        **kwargs,
-    )
-
-
-def _anthropic(model: str, **kwargs) -> ChatAnthropic:
-    """Build a ChatAnthropic instance with standard settings."""
-    settings = get_settings()
-    return ChatAnthropic(
-        model=model,
-        temperature=0,
-        api_key=settings.anthropic_api_key,
-        **kwargs,
-    )
-
 
 def _google(model: str, **kwargs) -> ChatGoogleGenerativeAI:
     """Build a ChatGoogleGenerativeAI instance with standard settings."""
@@ -84,6 +68,18 @@ def _groq(model: str, **kwargs) -> ChatGroq:
     )
 
 
+def _make_llm(model: str, **kwargs) -> BaseChatModel:
+    """
+    Build an LLM instance, auto-detecting provider from the model name.
+
+    Gemini models start with 'gemini' or 'models/'.
+    Everything else (llama-*, meta-llama/*, etc.) is treated as a Groq model.
+    """
+    if model.startswith("gemini") or model.startswith("models/"):
+        return _google(model, **kwargs)
+    return _groq(model, **kwargs)
+
+
 # ------------------------------------------------------------------
 # Public factory functions
 # Each returns a fully configured fallback chain.
@@ -93,35 +89,55 @@ def _groq(model: str, **kwargs) -> ChatGroq:
 @lru_cache(maxsize=1)
 def get_main_agent_llm() -> BaseChatModel:
     """
-    LLM for the main_agent node.
+    LLM for the main_agent node (no tools bound).
 
-    Requirements:
-    - Strong tool-calling reliability (agent loop depends on it)
-    - Large context window (full conversation history passed every turn)
-    - Best reasoning capability in the stack
-
-    Chain: OpenAI (primary) → Anthropic (fallback 1) → Gemini (fallback 2)
+    Provider is auto-detected from model name in .env, so swapping
+    between Gemini and Groq only requires editing .env.
 
     Returns:
-        BaseChatModel: fallback chain ready for .ainvoke() or .bind_tools()
+        BaseChatModel: fallback chain ready for .ainvoke()
     """
     settings = get_settings()
 
-    primary = _openai(settings.main_agent_model)
-    fallback_1 = _anthropic(settings.main_agent_fallback_1_model)
-    fallback_2 = _google(settings.main_agent_fallback_2_model)
+    primary = _make_llm(settings.main_agent_model)
+    fallback = _make_llm(settings.main_agent_fallback_model)
 
-    chain = primary.with_fallbacks([fallback_1, fallback_2])
+    chain = primary.with_fallbacks([fallback])
 
     logger.info(
         "Main agent LLM chain built",
         extra={
             "primary": settings.main_agent_model,
-            "fallback_1": settings.main_agent_fallback_1_model,
-            "fallback_2": settings.main_agent_fallback_2_model,
+            "fallback": settings.main_agent_fallback_model,
         },
     )
     return chain
+
+
+def build_main_agent_chain_with_tools(tools: list) -> BaseChatModel:
+    """
+    Build a main_agent chain with tools bound to EACH model individually,
+    then assembled into a fallback chain.
+
+    This is the correct way to use tools with a fallback chain:
+    binding tools after with_fallbacks() doesn't propagate properly to
+    individual models. Each model must have tools bound before the
+    fallback chain is created.
+
+    Not cached (tools list isn't hashable) — cheap to rebuild each call.
+
+    Args:
+        tools: list of LangChain tools to bind
+
+    Returns:
+        BaseChatModel: primary.bind_tools(tools).with_fallbacks([fallback.bind_tools(tools)])
+    """
+    settings = get_settings()
+
+    primary = _make_llm(settings.main_agent_model).bind_tools(tools)
+    fallback = _make_llm(settings.main_agent_fallback_model).bind_tools(tools)
+
+    return primary.with_fallbacks([fallback])
 
 
 @lru_cache(maxsize=1)
@@ -134,15 +150,13 @@ def get_summarize_llm() -> BaseChatModel:
     - Adequate instruction-following (compress without losing facts)
     - Low cost (runs frequently in long sessions)
 
-    Chain: Groq/Llama (primary) → OpenAI mini (fallback)
-
     Returns:
         BaseChatModel: fallback chain for summarization
     """
     settings = get_settings()
 
-    primary = _groq(settings.summarize_model)
-    fallback = _openai(settings.summarize_fallback_model)
+    primary = _make_llm(settings.summarize_model)
+    fallback = _make_llm(settings.summarize_fallback_model)
 
     chain = primary.with_fallbacks([fallback])
 
@@ -166,8 +180,6 @@ def get_deliverable_generator_llm() -> BaseChatModel:
     - Good instruction-following for complex schemas
     - Moderate capability (schema complexity is high)
 
-    Chain: Groq/Llama-70b (primary) → OpenAI mini (fallback)
-
     Note: Each generator tool calls .with_structured_output(PydanticModel)
     on the returned chain — this factory provides the base chain only.
 
@@ -176,8 +188,8 @@ def get_deliverable_generator_llm() -> BaseChatModel:
     """
     settings = get_settings()
 
-    primary = _groq(settings.deliverable_model)
-    fallback = _openai(settings.deliverable_fallback_model)
+    primary = _make_llm(settings.deliverable_model)
+    fallback = _make_llm(settings.deliverable_fallback_model)
 
     chain = primary.with_fallbacks([fallback])
 
@@ -201,15 +213,13 @@ def get_profiling_llm() -> BaseChatModel:
     - Reliable structured output (produces ResearchProfile)
     - Runs once per thread — cost is less critical than accuracy
 
-    Chain: Gemini (primary) → OpenAI mini (fallback)
-
     Returns:
         BaseChatModel: base chain; caller applies with_structured_output()
     """
     settings = get_settings()
 
-    primary = _google(settings.profiling_model)
-    fallback = _openai(settings.profiling_fallback_model)
+    primary = _make_llm(settings.profiling_model)
+    fallback = _make_llm(settings.profiling_fallback_model)
 
     chain = primary.with_fallbacks([fallback])
 

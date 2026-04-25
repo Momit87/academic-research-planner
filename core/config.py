@@ -6,7 +6,7 @@ Typed application settings loaded from environment variables via Pydantic Settin
 Usage:
     from core.config import get_settings
     settings = get_settings()
-    print(settings.openai_api_key)
+    print(settings.google_api_key)
 
 All environment variables are documented in .env.example.
 Never call os.getenv() directly — always go through this module.
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=False,       # OPENAI_API_KEY and openai_api_key both work
+        case_sensitive=False,       # GOOGLE_API_KEY and google_api_key both work
         extra="ignore",             # ignore unknown env vars, don't raise
     )
 
@@ -40,9 +40,8 @@ class Settings(BaseSettings):
 
     # ------------------------------------------------------------------
     # LLM Provider API Keys
+    # Gemini + Groq only (free tier access)
     # ------------------------------------------------------------------
-    openai_api_key: str = Field(..., description="OpenAI API key")
-    anthropic_api_key: str = Field(..., description="Anthropic API key")
     google_api_key: str = Field(..., description="Google Gemini API key")
     groq_api_key: str = Field(..., description="Groq API key")
 
@@ -63,8 +62,8 @@ class Settings(BaseSettings):
         description="Qdrant API key — empty string for local dev"
     )
     qdrant_vector_size: int = Field(
-        default=1024,
-        description="Cohere Embed v4 output dimension"
+        default=1536,
+        description="Cohere embed-v4.0 output dimension (1536)"
     )
     qdrant_top_k: int = Field(
         default=8,
@@ -104,24 +103,28 @@ class Settings(BaseSettings):
     # LLM Model Selection
     # These are the ONLY places model strings live.
     # Swap a model by editing .env — never touch logic files.
+    # Providers: Gemini (reasoning) + Groq (speed)
     # ------------------------------------------------------------------
 
     # Main agent — strongest reasoning + tool-calling reliability
-    main_agent_model: str = Field(default="gpt-4o")
-    main_agent_fallback_1_model: str = Field(default="claude-sonnet-4-5")
-    main_agent_fallback_2_model: str = Field(default="gemini-2.0-flash")
+    # Gemini primary, Groq fallback
+    main_agent_model: str = Field(default="gemini-2.0-flash")
+    main_agent_fallback_model: str = Field(default="llama-3.3-70b-versatile")
 
     # Summarize agent — speed over raw capability
+    # Groq primary, Gemini fallback
     summarize_model: str = Field(default="llama-3.1-8b-instant")
-    summarize_fallback_model: str = Field(default="gpt-4o-mini")
+    summarize_fallback_model: str = Field(default="gemini-2.0-flash-lite")
 
     # Deliverable generators — structured output, moderate capability
+    # Groq primary, Gemini fallback
     deliverable_model: str = Field(default="llama-3.3-70b-versatile")
-    deliverable_fallback_model: str = Field(default="gpt-4o-mini")
+    deliverable_fallback_model: str = Field(default="gemini-2.0-flash-lite")
 
     # Profiling LLM — runs once at onboarding to seed state
-    profiling_model: str = Field(default="gemini-2.0-flash")
-    profiling_fallback_model: str = Field(default="gpt-4o-mini")
+    # Gemini primary, Groq fallback
+    profiling_model: str = Field(default="gemini-2.0-flash-lite")
+    profiling_fallback_model: str = Field(default="llama-3.1-8b-instant")
 
     # ------------------------------------------------------------------
     # Runtime Thresholds
@@ -176,7 +179,7 @@ class Settings(BaseSettings):
     @classmethod
     def validate_vector_size(cls, v: int) -> int:
         """
-        Cohere Embed v4 outputs 1024-dimensional vectors.
+        Cohere Embed v4 outputs 1536-dimensional vectors.
         Changing this without re-embedding all collections will break retrieval.
         """
         if v <= 0:

@@ -14,23 +14,23 @@ python-multipart>=0.0.9          # multipart file uploads
 
 # ------------------------------------------------------------
 # Agent Framework
-# LangChain: building blocks (LLMs, tools, prompts, chains)
-# LangGraph: orchestration (graph, state, checkpointer)
+# Compatibility line pinned to pre-1.0 ecosystem due provider package constraints.
+# Keep these ranges mutually compatible with langchain-google-genai and tool imports.
+# See DECISIONS.md D-005 and D-012
 # ------------------------------------------------------------
-langchain>=0.3.0,<0.4.0
-langchain-core>=0.3.0,<0.4.0
-langchain-community>=0.3.0,<0.4.0
-langgraph>=0.2.0,<0.3.0
-langgraph-checkpoint-postgres>=2.0.0   # AsyncShallowPostgresSaver
+langchain>=0.3.25,<0.4.0
+langchain-core>=0.3.63,<0.4.0
+langchain-community>=0.3.24,<0.4.0
+langgraph>=0.2.76,<0.3.0
+langgraph-checkpoint-postgres>=3.0.0,<4.0.0   # AsyncShallowPostgresSaver
 
 # ------------------------------------------------------------
 # LLM Providers
-# All four wired for fallback chains + Groq for speed
+# Gemini + Groq only (free tier access)
+# See DECISIONS.md D-012
 # ------------------------------------------------------------
-langchain-openai>=0.2.0,<0.3.0
-langchain-anthropic>=0.2.0,<0.3.0
 langchain-google-genai>=2.0.0,<3.0.0
-langchain-groq>=0.2.0,<0.3.0
+langchain-groq>=0.2.5,<0.3.0
 
 # ------------------------------------------------------------
 # Embeddings
@@ -88,7 +88,7 @@ python-dotenv>=1.0.0,<2.0.0
 # Observability
 # LangSmith: tracing for LangChain/LangGraph + @traceable
 # ------------------------------------------------------------
-langsmith>=0.1.0,<0.2.0
+langsmith>=0.1.147,<0.4.0
 
 # ------------------------------------------------------------
 # Utilities

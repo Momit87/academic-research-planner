@@ -1,0 +1,228 @@
+# llm/prompt/deliverable_generators/clustering.yml
+# ==================================================
+# Prompt for generating the Clustering phase deliverable.
+# Techniques: Tree of Thoughts, Chain-of-Thought for Relationships,
+# Explicit Structured Output with Filled Example.
+
+# --- ROLE ---
+role: |
+  You are a research corpus taxonomist. Your task is to organize a collection
+  of academic sources into a meaningful thematic structure that reveals the
+  intellectual landscape of a research domain.
+
+  A good taxonomy is not just a grouping — it's a lens that helps researchers
+  see relationships, identify gaps, and position their contribution.
+
+# --- TREE OF THOUGHTS: TAXONOMY GENERATION ---
+tree_of_thoughts: |
+  TAXONOMY GENERATION PROTOCOL
+  ============================
+  Generate the optimal clustering by exploring multiple possibilities:
+
+  STEP 1: PROPOSE THREE ALTERNATIVE TAXONOMIES
+  ────────────────────────────────────────────
+  Generate three distinct ways to organize this corpus:
+
+  TAXONOMY A: Thematic Clustering
+  Group by research topic or phenomenon studied.
+  Example: "Attention Mechanisms", "Pre-training Methods", "Evaluation Metrics"
+
+  TAXONOMY B: Methodological Clustering
+  Group by research approach or technique used.
+  Example: "Empirical Studies", "Theoretical Frameworks", "System Implementations"
+
+  TAXONOMY C: Problem-Oriented Clustering
+  Group by the problem or challenge being addressed.
+  Example: "Data Scarcity Solutions", "Efficiency Improvements", "Quality Assessment"
+
+  For each taxonomy, sketch 3-7 cluster labels that would result.
+
+  STEP 2: EVALUATE EACH TAXONOMY
+  ─────────────────────────────
+  Score each taxonomy (1-5) on three criteria:
+
+  COVERAGE: Does it accommodate all sources with minimal orphans?
+  - 5: All sources fit naturally
+  - 3: Some sources require forcing
+  - 1: Many sources don't fit
+
+  INTERNAL COHERENCE: Are clusters distinct and well-defined?
+  - 5: Clusters are crisp, no overlap confusion
+  - 3: Some boundary ambiguity
+  - 1: Clusters overlap significantly
+
+  RESEARCH UTILITY: Does it reveal gaps and relationships useful for research?
+  - 5: Structure immediately suggests gaps and connections
+  - 3: Somewhat useful for planning
+  - 1: Just a filing system, no insight
+
+  STEP 3: SELECT THE BEST TAXONOMY
+  ───────────────────────────────
+  Choose the highest-scoring taxonomy and explain:
+  - Why this structure best serves the researcher's intent
+  - What insights it reveals about the field
+  - How it will support gap identification in the next phase
+
+  STEP 4: OUTPUT THE WINNING TAXONOMY
+  ──────────────────────────────────
+  Develop only the selected taxonomy into the full deliverable.
+  Do not include the rejected alternatives in the output.
+
+# --- CHAIN OF THOUGHT: CROSS-CLUSTER RELATIONSHIPS ---
+relationship_reasoning: |
+  DERIVING CROSS-CLUSTER RELATIONSHIPS
+  =====================================
+  For each pair of clusters, reason through potential relationships:
+
+  RELATIONSHIP TYPES:
+  - builds_on: Cluster B extends or applies ideas from Cluster A
+  - contradicts: Clusters present conflicting findings or approaches
+  - complements: Clusters address different aspects of the same problem
+  - overlaps: Clusters share some sources or concepts
+  - applies_to: One cluster provides methods, another provides domains
+
+  For each relationship you identify, explicitly reason:
+  1. What specific methodological or thematic link exists?
+  2. Which sources exemplify this connection?
+  3. Why is this relationship significant for the researcher?
+
+  Example reasoning:
+  "Cluster 'Back-translation Techniques' BUILDS_ON Cluster 'Data Augmentation Theory'
+   because the back-translation papers (Sennrich 2016, Edunov 2018) explicitly frame
+   their contribution as a specific instance of the general data augmentation paradigm
+   discussed in the theory cluster. This relationship is significant because it shows
+   how the researcher's focus area emerged from broader methodological foundations."
+
+# --- INJECTED STATE ---
+state_context: |
+  INJECTED CONTEXT
+  ================
+  Discovery deliverable (prerequisite):
+  {{discovery_deliverable}}
+
+  Research intent: {{research_intent}}
+  Field: {{field}}
+  Sub-field: {{sub_field}}
+
+  Corpus knowledge from main_agent queries:
+  {{corpus_context}}
+
+# --- OUTPUT FORMAT ---
+output_format: |
+  OUTPUT SPECIFICATION
+  ====================
+  Generate a ClusteringDeliverable with this exact JSON structure:
+
+  {
+    "clusters": [
+      {
+        "cluster_id": "<short_snake_case_id>",
+        "label": "<Human-Readable Cluster Name>",
+        "description": "<2-3 sentences describing what unites these sources>",
+        "source_ids": ["<source_id_1>", "<source_id_2>", "..."],
+        "key_concepts": ["<concept1>", "<concept2>", "<concept3>"],
+        "representative_source": "<most exemplary source_id or null>"
+      }
+    ],
+    "cross_cluster_relationships": [
+      {
+        "cluster_a": "<cluster_id>",
+        "cluster_b": "<cluster_id>",
+        "relationship_type": "<builds_on|contradicts|complements|overlaps|applies_to>",
+        "description": "<one sentence explaining the relationship>"
+      }
+    ],
+    "orphan_sources": ["<source_ids that don't fit any cluster>"],
+    "taxonomy_summary": "<2-3 sentence narrative of what the clustering reveals>"
+  }
+
+  FILLED EXAMPLE:
+  {
+    "clusters": [
+      {
+        "cluster_id": "cluster_backtranslation",
+        "label": "Back-Translation and Synthetic Data",
+        "description": "Papers focused on generating synthetic parallel data through back-translation and its variants. These works establish that translating monolingual target data back to the source language creates effective training signal, with iterative and tagged approaches showing progressive improvements.",
+        "source_ids": ["sha256_abc123", "sha256_def456", "sha256_ghi789", "sha256_jkl012"],
+        "key_concepts": ["back-translation", "synthetic data", "monolingual data", "iterative refinement", "tagged back-translation"],
+        "representative_source": "sha256_abc123"
+      },
+      {
+        "cluster_id": "cluster_lowresource",
+        "label": "Low-Resource NMT Approaches",
+        "description": "Research addressing neural machine translation for language pairs with limited parallel data. Includes transfer learning from high-resource pairs, multilingual training, and cross-lingual representations as solutions to data scarcity.",
+        "source_ids": ["sha256_mno345", "sha256_pqr678", "sha256_stu901"],
+        "key_concepts": ["low-resource", "transfer learning", "multilingual NMT", "cross-lingual", "data scarcity"],
+        "representative_source": "sha256_mno345"
+      },
+      {
+        "cluster_id": "cluster_evaluation",
+        "label": "Translation Quality Evaluation",
+        "description": "Works on measuring and comparing translation quality across systems and settings. Covers automatic metrics (BLEU, COMET, BERTScore), human evaluation protocols, and analysis of metric reliability for different language pairs.",
+        "source_ids": ["sha256_vwx234", "sha256_yza567"],
+        "key_concepts": ["BLEU", "COMET", "human evaluation", "metric correlation", "quality estimation"],
+        "representative_source": "sha256_vwx234"
+      },
+      {
+        "cluster_id": "cluster_architecture",
+        "label": "Transformer Architectures for MT",
+        "description": "Foundational and architectural papers on transformer-based sequence-to-sequence models for translation. Includes the original transformer paper, architectural variants, and efficiency improvements.",
+        "source_ids": ["sha256_bcd890", "sha256_efg123", "sha256_hij456", "sha256_klm789"],
+        "key_concepts": ["transformer", "attention", "encoder-decoder", "positional encoding", "layer normalization"],
+        "representative_source": "sha256_bcd890"
+      }
+    ],
+    "cross_cluster_relationships": [
+      {
+        "cluster_a": "cluster_backtranslation",
+        "cluster_b": "cluster_lowresource",
+        "relationship_type": "applies_to",
+        "description": "Back-translation techniques from cluster A are frequently applied as a primary solution for the low-resource scenarios studied in cluster B."
+      },
+      {
+        "cluster_a": "cluster_architecture",
+        "cluster_b": "cluster_backtranslation",
+        "relationship_type": "builds_on",
+        "description": "Back-translation research builds on transformer architectures, with most papers assuming transformer-based NMT as the underlying system."
+      },
+      {
+        "cluster_a": "cluster_evaluation",
+        "cluster_b": "cluster_lowresource",
+        "relationship_type": "complements",
+        "description": "Evaluation cluster provides the metrics and methods used to assess whether low-resource approaches actually improve translation quality."
+      }
+    ],
+    "orphan_sources": ["sha256_orphan1"],
+    "taxonomy_summary": "This corpus organizes into four clusters spanning the back-translation technique, its primary application domain (low-resource MT), the architectural foundation (transformers), and the evaluation apparatus. The clustering reveals that back-translation sits at the intersection of architectural capability and practical necessity, serving as the bridge between transformer power and low-resource constraints. The single orphan source on language identification may indicate a gap in how the corpus addresses preprocessing challenges."
+  }
+
+# --- QUALITY REQUIREMENTS ---
+quality_requirements: |
+  QUALITY CHECKLIST
+  =================
+  Before finalizing, verify:
+
+  [ ] 3-7 clusters (not fewer, not more)
+  [ ] Each cluster has a descriptive label AND 2-3 sentence description
+  [ ] Each cluster has 3-5 key_concepts
+  [ ] source_ids are actual SHA-256 hashes from the corpus
+  [ ] No source appears in multiple clusters
+  [ ] cross_cluster_relationships use valid cluster_ids
+  [ ] relationship_type is one of the five allowed values
+  [ ] orphan_sources lists sources that genuinely don't fit (may be empty)
+  [ ] taxonomy_summary explains what the structure reveals, not just describes it
+
+  DO NOT:
+  - Create clusters with only 1 source
+  - Use vague labels like "Other" or "Miscellaneous"
+  - Force sources into ill-fitting clusters (use orphans instead)
+  - Invent source_ids not present in the corpus
+
+# --- ASSEMBLY ---
+assembly_order:
+  - role
+  - tree_of_thoughts
+  - relationship_reasoning
+  - state_context
+  - output_format
+  - quality_requirements

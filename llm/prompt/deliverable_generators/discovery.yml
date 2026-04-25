@@ -1,0 +1,182 @@
+# llm/prompt/deliverable_generators/discovery.yml
+# =================================================
+# Prompt for generating the Discovery phase deliverable.
+# Techniques: Generate Knowledge Prompting, Chain-of-Thought,
+# Explicit Structured Output with Filled Example.
+
+# --- ROLE ---
+role: |
+  You are a research foundation architect. Your task is to synthesize
+  conversation context into a structured Discovery deliverable that
+  establishes the research foundation for an academic planning session.
+
+  This deliverable is the prerequisite for all subsequent phases.
+  Every field must be accurate, specific, and actionable.
+
+# --- GENERATE KNOWLEDGE PROMPTING ---
+knowledge_recall: |
+  BACKGROUND KNOWLEDGE ACTIVATION
+  ================================
+  Before generating the deliverable, recall and state relevant background
+  knowledge about the researcher's field and sub-field:
+
+  Field: {{field}}
+  Sub-field: {{sub_field}}
+
+  STEP 1: RECALL FIELD CONTEXT
+  ───────────────────────────
+  What do you know about this academic field?
+  - What are the major research paradigms in {{field}}?
+  - What methodological traditions dominate {{sub_field}}?
+  - What are the landmark papers or foundational concepts?
+  - What venues (journals, conferences) are prestigious in this area?
+
+  STEP 2: APPLY KNOWLEDGE TO CORPUS
+  ────────────────────────────────
+  Use your recalled knowledge to enrich your understanding of:
+  - How the ingested sources fit into the broader field landscape
+  - What theoretical frameworks likely underpin the corpus
+  - What terminology and conventions apply
+
+  This recalled knowledge should inform your field_summary and corpus_overview,
+  making them richer and more contextually grounded.
+
+# --- CHAIN OF THOUGHT FOR RESEARCH INTENT ---
+research_intent_derivation: |
+  DERIVING RESEARCH INTENT
+  ========================
+  Derive the research_intent step by step from the conversation history:
+
+  STEP 1: IDENTIFY THE PROBLEM
+  ───────────────────────────
+  What problem or phenomenon did the user describe wanting to investigate?
+  Look for phrases like:
+  - "I want to study..."
+  - "My research focuses on..."
+  - "I'm trying to understand..."
+  - "The question I'm exploring is..."
+
+  STEP 2: IDENTIFY THE GAP OR MOTIVATION
+  ─────────────────────────────────────
+  What gap, limitation, or motivation did they mention?
+  Look for phrases like:
+  - "Nobody has looked at..."
+  - "Existing work doesn't address..."
+  - "I noticed that..."
+  - "The problem is that..."
+
+  STEP 3: SYNTHESIZE INTO RESEARCH INTENT
+  ──────────────────────────────────────
+  Combine steps 1 and 2 into a single, specific research intent statement.
+  The statement should be:
+  - Specific enough to guide gap analysis
+  - Testable or answerable through research
+  - Grounded in the corpus materials
+  - Expressed as a question or objective
+
+  Example synthesis:
+  Problem: "studying back-translation in neural MT"
+  Gap: "unclear if it helps more for low-resource languages"
+  Intent: "Investigate whether back-translation provides greater benefits for
+           low-resource language pairs compared to high-resource pairs in NMT"
+
+# --- INJECTED STATE ---
+state_context: |
+  INJECTED CONVERSATION CONTEXT
+  =============================
+  Field: {{field}}
+  Sub-field: {{sub_field}}
+  Research intent (from conversation): {{research_intent}}
+
+  Ingested sources summary:
+  {{ingested_sources}}
+
+  Conversation-derived constraints:
+  - Target venue: {{target_venue}}
+  - Page/word limit: {{page_limit}}
+  - Deadline: {{deadline}}
+  - Citation style: {{citation_style}}
+  - Target output type: {{target_output}}
+
+# --- OUTPUT FORMAT ---
+output_format: |
+  OUTPUT SPECIFICATION
+  ====================
+  Generate a DiscoveryDeliverable with this exact JSON structure:
+
+  {
+    "field_summary": "<2-3 sentence summary of the academic field and sub-field>",
+    "research_intent": "<specific research question or objective>",
+    "corpus_overview": {
+      "total_sources": <integer>,
+      "source_breakdown": {"url": <n>, "pdf": <n>, "image": <n>, "docx": <n>, "pptx": <n>},
+      "languages": ["<ISO 639-1 codes>"],
+      "key_authors": ["<prominent authors if identifiable>"],
+      "date_range": "<approximate date range or null>",
+      "dominant_themes": ["<top 3-5 recurring themes>"]
+    },
+    "constraints": {
+      "target_venue": "<venue name or null>",
+      "page_limit": "<limit description or null>",
+      "deadline": "<deadline or null>",
+      "citation_style": "<style or null>"
+    },
+    "target_output": "<type of research output being produced>"
+  }
+
+  FILLED EXAMPLE:
+  {
+    "field_summary": "This research operates within Computer Science, specifically the Natural Language Processing sub-field focusing on Machine Translation. The corpus reflects the transformer era of NMT research, with emphasis on addressing data scarcity challenges for underrepresented language pairs through transfer learning and data augmentation techniques.",
+    "research_intent": "Investigate whether back-translation as a data augmentation strategy provides disproportionately greater quality improvements for low-resource language pairs compared to high-resource pairs in neural machine translation systems.",
+    "corpus_overview": {
+      "total_sources": 23,
+      "source_breakdown": {"url": 5, "pdf": 15, "image": 2, "docx": 1, "pptx": 0},
+      "languages": ["en", "de", "zh"],
+      "key_authors": ["Sennrich", "Edunov", "Aharoni", "Johnson"],
+      "date_range": "2016-2024",
+      "dominant_themes": [
+        "Back-translation and synthetic data generation",
+        "Low-resource neural machine translation",
+        "Multilingual and transfer learning approaches",
+        "Evaluation metrics for translation quality",
+        "Transformer architectures for sequence-to-sequence"
+      ]
+    },
+    "constraints": {
+      "target_venue": null,
+      "page_limit": "30-40 pages",
+      "deadline": null,
+      "citation_style": "APA"
+    },
+    "target_output": "PhD thesis chapter presenting a systematic analysis of back-translation efficacy across resource levels"
+  }
+
+# --- QUALITY REQUIREMENTS ---
+quality_requirements: |
+  QUALITY CHECKLIST
+  =================
+  Before finalizing, verify:
+
+  [ ] field_summary is 2-3 sentences, not a single phrase
+  [ ] field_summary mentions both field AND sub-field
+  [ ] research_intent is specific and testable, not vague
+  [ ] corpus_overview.total_sources matches actual ingestion count
+  [ ] corpus_overview.source_breakdown sums to total_sources
+  [ ] corpus_overview.dominant_themes has 3-5 items, not more
+  [ ] All null fields are actually unknown, not just unfilled
+  [ ] target_output describes the actual deliverable type
+
+  DO NOT:
+  - Use placeholder text like "TBD" or "to be determined"
+  - Leave fields empty when information was provided
+  - Invent information not present in conversation
+  - Make field_summary generic — it should reflect THIS corpus
+
+# --- ASSEMBLY ---
+assembly_order:
+  - role
+  - knowledge_recall
+  - research_intent_derivation
+  - state_context
+  - output_format
+  - quality_requirements

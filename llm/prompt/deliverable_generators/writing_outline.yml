@@ -1,0 +1,373 @@
+# llm/prompt/deliverable_generators/writing_outline.yml
+# =======================================================
+# Prompt for generating the Writing Outline phase deliverable.
+# Techniques: Prompt Chaining Awareness, Few-shot Section Example,
+# Chain-of-Thought for Abstract Draft, Explicit Structured Output.
+
+# --- ROLE ---
+role: |
+  You are a research paper architect. Your task is to transform a chosen
+  research gap into an actionable writing roadmap — a complete outline that
+  a researcher can follow to write their paper section by section.
+
+  This is the final deliverable of the research planning journey. Every section
+  must have clear intent, every paragraph must have a purpose, and every
+  citation must be positioned where it belongs.
+
+# --- PROMPT CHAINING: GROUNDING IN PRIOR PHASES ---
+prompt_chaining_awareness: |
+  GROUNDING IN PRIOR DELIVERABLES
+  ================================
+  This outline MUST be grounded in the outputs of prior phases. Do not generate
+  in isolation — explicitly reference and build upon:
+
+  FROM CLUSTERING DELIVERABLE ({{clustering_deliverable}}):
+  ─────────────────────────────────────────────────────────
+  Map clusters to paper sections:
+  - Each cluster may become a Related Work subsection
+  - cross_cluster_relationships reveal narrative flow
+  - Cluster descriptions inform section framing
+
+  Example mapping:
+  - cluster_backtranslation → Section 2.1: Back-Translation Techniques
+  - cluster_lowresource → Section 2.2: Low-Resource NMT Approaches
+  - cluster_evaluation → Section 3: Experimental Methodology
+
+  FROM GAP ANALYSIS DELIVERABLE ({{gap_analysis_deliverable}}):
+  ─────────────────────────────────────────────────────────────
+  The chosen_gap drives the paper's contribution claim:
+  - chosen_gap.title → basis for paper title
+  - chosen_gap.description → motivation in introduction
+  - chosen_gap.evidence → gaps to address in Related Work
+  - chosen_gap.gap_type → methodological approach
+
+  Example: If chosen_gap is empirical, the paper needs experimental sections.
+           If chosen_gap is theoretical, the paper needs framework development.
+
+  FROM DISCOVERY DELIVERABLE ({{discovery_deliverable}}):
+  ───────────────────────────────────────────────────────
+  - research_intent → central thesis
+  - constraints.citation_style → citation format
+  - constraints.page_limit → section length planning
+  - target_output → overall structure (thesis chapter vs conference paper)
+
+# --- FEW-SHOT: OUTLINE SECTION EXAMPLE ---
+section_example: |
+  OUTLINE SECTION GRANULARITY EXAMPLE
+  ====================================
+  Each OutlineSection should have this level of detail:
+
+  EXAMPLE SECTION:
+  {
+    "section_number": "2.1",
+    "title": "Back-Translation as Data Augmentation",
+    "paragraph_intents": [
+      "Open with the data scarcity problem in NMT and why augmentation is necessary, establishing that parallel data is the bottleneck for translation quality.",
+      "Present back-translation (Sennrich 2016) as the dominant augmentation approach, explaining the mechanism: translate target monolingual data to source using a reverse model.",
+      "Discuss variants: tagged back-translation (Caswell 2019), iterative back-translation (Hoang 2018), and sampling strategies (Edunov 2018), showing the technique's evolution.",
+      "Identify the gap: all seminal papers evaluate on high-resource pairs, leaving the low-resource efficacy question unanswered, transitioning to Section 2.2."
+    ],
+    "citations": [
+      {
+        "citation_key": "sennrich2016backtranslation",
+        "origin": "https://arxiv.org/abs/1511.06709",
+        "suggested_context": "Foundational paper introducing back-translation; cite when explaining the core mechanism."
+      },
+      {
+        "citation_key": "edunov2018understanding",
+        "origin": "sha256_abc123",
+        "suggested_context": "Sampling strategies for back-translation; cite when discussing variants and improvements."
+      },
+      {
+        "citation_key": "caswell2019tagged",
+        "origin": "sha256_def456",
+        "suggested_context": "Tagged back-translation approach; cite when discussing noise handling in synthetic data."
+      }
+    ],
+    "estimated_length": "400-500 words"
+  }
+
+  KEY REQUIREMENTS:
+  - paragraph_intents are complete sentences describing what each paragraph ARGUES
+  - Each intent explains the PURPOSE, not just the topic
+  - citations include suggested_context explaining WHERE to cite and WHY
+  - estimated_length helps the researcher plan their writing
+
+# --- CHAIN OF THOUGHT: ABSTRACT DRAFT ---
+abstract_cot: |
+  ABSTRACT GENERATION PROTOCOL
+  ============================
+  Generate the abstract_draft using step-by-step reasoning following IMRaD:
+
+  STEP 1: RESTATE THE GAP AS A CONTRIBUTION CLAIM
+  ──────────────────────────────────────────────
+  Transform chosen_gap into a positive contribution statement.
+
+  Gap: "No systematic comparison exists of back-translation's benefit across resource levels"
+  Contribution: "We present the first systematic comparison of back-translation efficacy
+                 for low-resource versus high-resource language pairs"
+
+  STEP 2: SUMMARIZE THE METHODOLOGICAL APPROACH
+  ────────────────────────────────────────────
+  From the outline structure, describe what the paper DOES:
+  - What experimental design, analysis, or framework?
+  - What data, language pairs, or settings?
+  - What metrics or evaluation approach?
+
+  Example: "Through controlled experiments across 12 language pairs spanning four
+            resource levels, we measure BLEU improvements from back-translation..."
+
+  STEP 3: STATE THE EXPECTED FORM OF FINDINGS
+  ──────────────────────────────────────────
+  Based on the research intent, what SHAPE will the results take?
+  - Is it a comparison? State what's being compared.
+  - Is it a framework? State what it explains.
+  - Is it a system? State what it achieves.
+
+  Example: "Our results reveal that back-translation yields proportionally larger
+            gains for low-resource pairs, with improvements of X% versus Y%..."
+
+  STEP 4: SYNTHESIZE INTO 150-WORD ABSTRACT
+  ────────────────────────────────────────
+  Combine steps 1-3 into a flowing abstract:
+  - Opening: Problem and motivation (why it matters)
+  - Gap: What's missing (transition from existing work)
+  - Method: What you do (approach)
+  - Result: What you find (contribution)
+  - Implication: Why it matters (broader impact)
+
+  Target: 150-250 words
+
+# --- INJECTED STATE ---
+state_context: |
+  INJECTED CONTEXT
+  ================
+  Discovery deliverable:
+  {{discovery_deliverable}}
+
+  Clustering deliverable:
+  {{clustering_deliverable}}
+
+  Gap analysis deliverable (prerequisite):
+  {{gap_analysis_deliverable}}
+
+  Chosen gap:
+  {{chosen_gap}}
+
+  Research intent: {{research_intent}}
+  Target output: {{target_output}}
+  Citation style: {{citation_style}}
+  Page limit: {{page_limit}}
+
+# --- OUTPUT FORMAT ---
+output_format: |
+  OUTPUT SPECIFICATION
+  ====================
+  Generate a WritingOutlineDeliverable with this exact JSON structure:
+
+  {
+    "title_options": [
+      "<Descriptive title: clearly states the contribution>",
+      "<Question-based title: poses the research question>",
+      "<Provocative title: challenges existing assumptions>"
+    ],
+    "abstract_draft": "<150-250 word abstract following IMRaD structure>",
+    "sections": [
+      {
+        "section_number": "<e.g., '1', '2.1', '3.2.1'>",
+        "title": "<Section Title>",
+        "paragraph_intents": ["<sentence describing what this paragraph argues>", "..."],
+        "citations": [
+          {
+            "citation_key": "<author_year_keyword>",
+            "origin": "<source URL or SHA-256 ID>",
+            "suggested_context": "<where/why to cite this source>"
+          }
+        ],
+        "estimated_length": "<e.g., '300-400 words', '1 page'>"
+      }
+    ],
+    "citation_style": "<APA|MLA|Chicago|IEEE>",
+    "estimated_total_length": "<e.g., '8 pages', '12,000 words'>"
+  }
+
+  FILLED EXAMPLE:
+  {
+    "title_options": [
+      "Back-Translation Benefits Low-Resource Translation More: A Systematic Comparison Across Resource Levels",
+      "Does Back-Translation Help More When Data Is Scarce? Evidence from 12 Language Pairs",
+      "The Resource-Level Paradox: Why Data Augmentation Matters Most When You Have Least"
+    ],
+    "abstract_draft": "Neural machine translation quality depends heavily on parallel training data, making data augmentation crucial for low-resource language pairs. Back-translation has emerged as the dominant augmentation technique, yet existing studies evaluate primarily on high-resource pairs like English-German, leaving unclear whether its benefits scale differently with resource availability. We present the first systematic comparison of back-translation efficacy across resource levels, experimenting with 12 language pairs spanning four resource categories (high, medium, low, extremely low). Using consistent transformer architectures and evaluation protocols, we measure BLEU improvements from back-translation against baseline systems. Our results reveal that back-translation yields proportionally larger gains for low-resource pairs: while high-resource pairs see 2-3 BLEU improvement, low-resource pairs gain 5-8 BLEU, with extremely low-resource pairs showing up to 12 BLEU improvement. We analyze this differential through the lens of training data diversity and find that back-translation's regularization effect is more valuable when original data is limited. These findings have practical implications for prioritizing augmentation efforts in multilingual NMT development.",
+    "sections": [
+      {
+        "section_number": "1",
+        "title": "Introduction",
+        "paragraph_intents": [
+          "Establish the importance of neural machine translation and its dependence on parallel training data, motivating the challenge of low-resource translation.",
+          "Introduce back-translation as the dominant data augmentation technique, citing its widespread adoption and demonstrated effectiveness.",
+          "Identify the gap: existing studies focus on high-resource pairs, leaving the relative benefit for low-resource pairs unquantified.",
+          "State the contribution: first systematic comparison across resource levels, revealing proportionally larger gains for low-resource settings.",
+          "Preview the paper structure: related work, methodology, experiments, results, analysis, conclusion."
+        ],
+        "citations": [
+          {
+            "citation_key": "sennrich2016backtranslation",
+            "origin": "sha256_abc123",
+            "suggested_context": "Cite when introducing back-translation as foundational technique."
+          },
+          {
+            "citation_key": "edunov2018understanding",
+            "origin": "sha256_def456",
+            "suggested_context": "Cite when noting widespread adoption and sampling strategies."
+          }
+        ],
+        "estimated_length": "500-600 words"
+      },
+      {
+        "section_number": "2",
+        "title": "Related Work",
+        "paragraph_intents": [
+          "Overview paragraph positioning this work at the intersection of back-translation research and low-resource NMT."
+        ],
+        "citations": [],
+        "estimated_length": "100 words"
+      },
+      {
+        "section_number": "2.1",
+        "title": "Back-Translation and Data Augmentation",
+        "paragraph_intents": [
+          "Explain the back-translation mechanism: using a reverse model to translate target monolingual data to source.",
+          "Survey variants: tagged back-translation, iterative approaches, sampling strategies.",
+          "Note that all seminal evaluations use high-resource pairs, establishing the empirical gap."
+        ],
+        "citations": [
+          {
+            "citation_key": "sennrich2016backtranslation",
+            "origin": "sha256_abc123",
+            "suggested_context": "Foundational paper; cite for core mechanism explanation."
+          },
+          {
+            "citation_key": "caswell2019tagged",
+            "origin": "sha256_ghi789",
+            "suggested_context": "Tagged approach; cite in variants discussion."
+          }
+        ],
+        "estimated_length": "400-500 words"
+      },
+      {
+        "section_number": "2.2",
+        "title": "Low-Resource Neural Machine Translation",
+        "paragraph_intents": [
+          "Define low-resource NMT and the data scarcity challenge.",
+          "Survey approaches: transfer learning, multilingual training, cross-lingual representations.",
+          "Note that these approaches often use back-translation without quantifying its differential benefit."
+        ],
+        "citations": [
+          {
+            "citation_key": "zoph2016transfer",
+            "origin": "sha256_jkl012",
+            "suggested_context": "Transfer learning baseline; cite in approaches survey."
+          }
+        ],
+        "estimated_length": "400-500 words"
+      },
+      {
+        "section_number": "3",
+        "title": "Experimental Methodology",
+        "paragraph_intents": [
+          "Describe the language pair selection spanning four resource levels with rationale.",
+          "Specify the transformer architecture and training configuration for reproducibility.",
+          "Explain the back-translation procedure: reverse model training, sampling, synthesis.",
+          "Define evaluation metrics: BLEU, COMET, and statistical significance testing."
+        ],
+        "citations": [
+          {
+            "citation_key": "vaswani2017attention",
+            "origin": "sha256_mno345",
+            "suggested_context": "Transformer architecture; cite in model description."
+          },
+          {
+            "citation_key": "papineni2002bleu",
+            "origin": "sha256_pqr678",
+            "suggested_context": "BLEU metric; cite in evaluation metrics section."
+          }
+        ],
+        "estimated_length": "800-1000 words"
+      },
+      {
+        "section_number": "4",
+        "title": "Results",
+        "paragraph_intents": [
+          "Present baseline translation quality across all language pairs.",
+          "Show back-translation improvements organized by resource level.",
+          "Quantify the differential: higher percentage gains for lower-resource pairs.",
+          "Report statistical significance of the resource-level effect."
+        ],
+        "citations": [],
+        "estimated_length": "600-800 words"
+      },
+      {
+        "section_number": "5",
+        "title": "Analysis",
+        "paragraph_intents": [
+          "Analyze why back-translation helps more for low-resource pairs.",
+          "Examine the data diversity hypothesis: synthetic data provides more novel patterns when original data is limited.",
+          "Discuss the regularization effect and its resource-dependent magnitude.",
+          "Consider alternative explanations and limitations."
+        ],
+        "citations": [],
+        "estimated_length": "500-600 words"
+      },
+      {
+        "section_number": "6",
+        "title": "Conclusion",
+        "paragraph_intents": [
+          "Summarize the main finding: back-translation provides disproportionate benefit for low-resource pairs.",
+          "State practical implications: prioritize back-translation for lowest-resource pairs in multilingual systems.",
+          "Acknowledge limitations and suggest future work directions."
+        ],
+        "citations": [],
+        "estimated_length": "300-400 words"
+      }
+    ],
+    "citation_style": "APA",
+    "estimated_total_length": "8-10 pages"
+  }
+
+# --- QUALITY REQUIREMENTS ---
+quality_requirements: |
+  QUALITY CHECKLIST
+  =================
+  Before finalizing, verify:
+
+  [ ] 3 title_options: descriptive, question-based, provocative
+  [ ] abstract_draft is 150-250 words following IMRaD structure
+  [ ] sections cover: Introduction, Related Work, Method, Results, Analysis/Discussion, Conclusion
+  [ ] Each section has paragraph_intents as complete sentences (not topics)
+  [ ] paragraph_intents describe what paragraph ARGUES, not just what it's ABOUT
+  [ ] citations include suggested_context explaining where/why to cite
+  [ ] citation_style matches constraints from Discovery deliverable
+  [ ] estimated_total_length is realistic for target_output type
+
+  STRUCTURAL REQUIREMENTS:
+  [ ] Related Work subsections map to clusters from clustering deliverable
+  [ ] Introduction identifies the gap from gap_analysis deliverable
+  [ ] Method section is appropriate for chosen_gap.gap_type
+  [ ] Sections flow logically with transitions implied by paragraph_intents
+
+  DO NOT:
+  - Write vague paragraph_intents like "Discuss related work"
+  - Leave citations empty for sections that need grounding
+  - Create abstract that doesn't mention the specific contribution
+  - Ignore constraints (page_limit, citation_style) from Discovery
+
+# --- ASSEMBLY ---
+assembly_order:
+  - role
+  - prompt_chaining_awareness
+  - section_example
+  - abstract_cot
+  - state_context
+  - output_format
+  - quality_requirements
