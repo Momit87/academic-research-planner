@@ -39,3 +39,9 @@ htmlcov/
 
 # Logs
 *.log
+
+# Internal docs — not for public repo
+DECISIONS.md
+FIXES.md
+SETUP.md
+TESTING_GUIDE.md
