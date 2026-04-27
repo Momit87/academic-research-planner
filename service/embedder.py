@@ -180,8 +180,8 @@ class Embedder:
         """
         Embed raw image bytes in batches using Cohere's multimodal API.
 
-        Cohere Embed v4 accepts images as base64-encoded strings
-        in the images parameter alongside or instead of texts.
+        Cohere Embed v4 requires images as data URIs:
+        "data:<mime_type>;base64,<b64_data>"
 
         Args:
             images: list of raw image bytes
@@ -195,14 +195,14 @@ class Embedder:
         for i in range(0, len(images), IMAGE_BATCH_SIZE):
             batch = images[i: i + IMAGE_BATCH_SIZE]
 
-            # Convert bytes to base64 strings for Cohere API
-            b64_images = [
-                base64.b64encode(img).decode("utf-8")
+            # Cohere requires data URIs, not bare base64
+            data_uris = [
+                f"data:{self._detect_mime(img)};base64,{base64.b64encode(img).decode('utf-8')}"
                 for img in batch
             ]
 
             response = await self._client.embed(
-                images=b64_images,
+                images=data_uris,
                 model=COHERE_EMBED_MODEL,
                 input_type=input_type,
                 embedding_types=["float"],
@@ -210,3 +210,14 @@ class Embedder:
             all_embeddings.extend(response.embeddings.float)
 
         return all_embeddings
+
+    @staticmethod
+    def _detect_mime(image_bytes: bytes) -> str:
+        """Detect MIME type from magic bytes; defaults to image/jpeg."""
+        if image_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+            return "image/png"
+        if image_bytes[:3] == b"\xff\xd8\xff":
+            return "image/jpeg"
+        if image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+            return "image/webp"
+        return "image/jpeg"

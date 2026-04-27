@@ -186,7 +186,7 @@ class Chunker:
             source_type=doc.source_type,
             origin=doc.origin,
             modality=Modality.IMAGE,
-            text=None,
+            text=doc.text,    # vision LLM caption if available, else None
             image_bytes=doc.image_bytes,
             page=doc.page,
             slide=doc.slide,

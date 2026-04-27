@@ -56,7 +56,7 @@ class DocIngestor:
             filename = file.get("filename", "unknown_doc")
             mime_type = file.get("mime_type", "")
 
-            with timer("doc_extract", logger, extra={"filename": filename}):
+            with timer("doc_extract", logger, extra={"file_name": filename}):
                 try:
                     raw_bytes = base64.b64decode(file["base64_content"])
 
@@ -67,7 +67,7 @@ class DocIngestor:
                     else:
                         logger.warning(
                             "Unsupported document format — skipping",
-                            extra={"filename": filename, "mime_type": mime_type}
+                            extra={"file_name": filename, "mime_type": mime_type}
                         )
                         continue
 
@@ -76,7 +76,7 @@ class DocIngestor:
                 except Exception as e:
                     logger.warning(
                         "Document ingestion failed — skipping",
-                        extra={"filename": filename, "error": str(e)}
+                        extra={"file_name": filename, "error": str(e)}
                     )
 
         logger.info(

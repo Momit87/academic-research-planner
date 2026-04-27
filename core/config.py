@@ -126,6 +126,12 @@ class Settings(BaseSettings):
     profiling_model: str = Field(default="gemini-2.0-flash-lite")
     profiling_fallback_model: str = Field(default="llama-3.1-8b-instant")
 
+    # Vision LLM — Groq llama-4-scout for image captioning during ingestion
+    vision_model: str = Field(
+        default="meta-llama/llama-4-scout-17b-16e-instruct",
+        description="Groq vision model used to caption images during ingestion"
+    )
+
     # ------------------------------------------------------------------
     # Runtime Thresholds
     # ------------------------------------------------------------------
